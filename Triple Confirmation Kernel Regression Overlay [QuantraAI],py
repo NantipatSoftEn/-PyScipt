@@ -1,0 +1,184 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © QuantraAI
+//                              ,/((((((((((((((((((,                             
+//                        *(((/.              *      ./(((/                       
+//                    (((*         .((((((((          ,    ,(((                   
+//             /* .((/      ,((*              /*.          ,,  *((,               
+//           (. ((/  /  ,(*           .,*****,.     /(            *((             
+//         (  ((.    *(.       *((*               ,(((            .  ((           
+//       (* ((.    (*      /(,  ,((.              ((/  .((  *(      /  ((         
+//      ( ,(/    (*     *(.  //                       *(   ((  (*     * ,(/       
+//    .( ((    *(     ((                  (                  /(        /  ((      
+//   .( ((    (,    .(  (*                (                .(. ((          ((     
+//   ( /(.   (,    (/ *(          &@@@@@@ (       &@%        *( ,(          ((    
+//  /. (/   //    (/          *@@.@@@@ @@,(      ,#              ,( *(      *(*    
+//  ( ((    (    .( ,*        @@@.*,@@@@@*(    .%   ,@@%@@/    (( (* (,      ((                  ██████╗  ██╗   ██╗  █████╗  ███╗   ██╗ ████████╗ ██████╗   █████╗ 
+//  ( (( , ,(    (* (.      ,@@@&@@@@@@@@*(        &            (  ( ,(      /(                 ██╔═══██╗ ██║   ██║ ██╔══██╗ ████╗  ██║ ╚══██╔══╝ ██╔══██╗ ██╔══██╗
+// ,* (/ * ((    (  (      @@@(*@@@@(/@@% (             .*      (  (         *(.                ██║   ██║ ██║   ██║ ███████║ ██╔██╗ ██║    ██║    ██████╔╝ ███████║
+// ,/ ((   ((    (        .@@@@##%@@@@@@@*(             %&         (       / *( .(              ██║▄▄ ██║ ██║   ██║ ██╔══██║ ██║╚██╗██║    ██║    ██╔══██╗ ██╔══██║
+//  ( ((    (    *(        @@@@@@@@@@ @@@*( ......(,              *(       * (( /,              ╚██████╔╝ ╚██████╔╝ ██║  ██║ ██║ ╚████║    ██║    ██║  ██║ ██║  ██║
+//  ( ,(,   (.    (  (     .@@%,@% %@@@@@*(,@@@@    %...@@,       (       ,  (/ (                ╚══▀▀═╝   ╚═════╝  ╚═╝  ╚═╝ ╚═╝  ╚═══╝    ╚═╝    ╚═╝  ╚═╝ ╚═╝  ╚═╝
+//  ./ ((    (     (  (.    *@@@ @@@@/(@@*(      @               (.         (( */ 
+//   /, ((    (     (,         ,*@@@@@@@@ (       @@@           (          /(. (  
+//    (, ((    (.    ,(            (@@(   (                   (/ .        /(, (     
+//     (* ((  , *(     *(                 (                 (( .(        (( .(    
+//      .( /(/ .  ((  (/  ((              ,                  /(        ,(( /*     
+//        /* ((* .  *(  .(/  *((.                                    .(( .(       
+//          (, (((     ((          /((((((            /.    ((  (  *((  (         
+//            // .((*  ,  .((.   ./(((/*.      /((/.    ((,      ((/ *(           
+//               (* .(((        /(((*.         .,(((/.   /   *((/ .(.             
+//                  ((  *(((*     (              . ,    ,(((/  /(.                
+//                      /(,  .((((((*,         .*((((((,  .((.                    
+//                           ,(((,                 ,/((,   
+//
+//
+//
+//
+//@version=5
+indicator("Triple Confirmation Kernel Regression Oscillator Overlay [QuantraAI]",  "ᏦᏒᎧ ᏫᏉᏋᏒႱᎯᎽ [QuantraAI]", true, format.price, timeframe = "", timeframe_gaps = false)
+
+var string KRS = "ᏦᏒᎧ ᏫᏉᏋᏒႱᎯᎽ - Settings", var string KRU = "ᏦᏒᎧ ᏫᏉᏋᏒႱᎯᎽ - UI"
+// Kernel Regression Settings
+source    = input.source(close,      "Source",                                                                          group = KRS)
+bandwidth = input.int   (45,         "Bandwidth", 1,                                                                    group = KRS, tooltip = "Length of the Kernel Regression calculation")
+width     = input.float (2,          "Width", step = 0.2,                                                               group = KRS, tooltip = "Smoothes the Signal")
+sdLook    = input.int   (150,        "Standard Deviation Lookback",                                                     group = KRS, tooltip = "Length of the SD bands lookback period") 
+sdMult    = input.float (3,          "Standard Deviation Extreme for OB/OS Border", step = 0.5,                         group = KRS, tooltip = "Defines the outer border of the SD bands. \nThe inner border begins at 50% of the SD Multiplier")
+ColMode   = input.string("Modern",   "Color Palette Choice", ["Classic", "Modern", "Robust", "Accented", "Monochrome"], group = KRU, inline  = "drop")
+man       = input.bool  (false,      "Custom Palette",                                                                  group = KRU, inline  = "drop")
+manUpC    = input.color (#00ff00,  "Custom Up",                                                                       group = KRU, inline  = "man") 
+manDnC    = input.color (#ff0000,  "Custom Down",                                                                     group = KRU, inline  = "man")
+
+sig       = input.bool  (false,      "Show Trend Signals",                                                              group = KRU)
+BCol      = input.bool  (true,       "Enable Bar Coloring",                                                             group = KRU)
+devS      = input.bool  (true,       "Enable Deviation Band Shading",                                                   group = KRU)
+OBOS      = input.bool  (true,       "Enable Overbought/Oversold Shading",                                              group = KRU)   
+TR        = input.int   (85,         "Shading Transparency", 0, 100,                                                    group = KRU)
+
+
+// Initialize color variables
+var color UpC = na
+var color DnC = na 
+var color BgC = na 
+
+// Assign colors based on the selected color mode
+if ColMode == "Classic"     
+    UpC := color.lime
+    DnC := color.maroon 
+    BgC := color.green
+if ColMode == "Modern"     
+    UpC := #5ffae0
+    DnC := #c22ed0
+    BgC := #9ef6fb
+if ColMode == "Robust"     
+    UpC := #ffbb00
+    DnC := #770737
+    BgC := #a23061  
+if ColMode == "Accented"  
+    UpC := #9618f7
+    DnC := #ff0078
+    BgC := #801155
+if ColMode == "Monochrome"
+    UpC := #dee2e6
+    DnC := #495057
+    BgC := #212529
+
+// Switch to manual palette if selected
+[UpCol, DnCol] = switch man
+    false => [UpC, DnC]
+    true  => [manUpC, manDnC]
+
+
+  //                 //
+ //    Functions    //
+//                 //
+
+kernel(source, bandwidth, kernel_type) =>
+    switch kernel_type
+        "Epanechnikov" => math.abs(source) <= 1 ? 0.75 * (1 - math.pow(source, 2)) : 0.0
+        "Logistic"     => 1/math.exp(source + 2 + math.exp(-source))
+        "Wave"         => math.abs(source) <= 0.5 ? (1 - math.abs(source)) * math.cos(math.pi * source) : 0.
+
+kernelRegression(src, bandwidth, kernel_type) =>
+    sumWeightedY = 0.
+    sumKernels   = 0.
+    for i = 0 to bandwidth - 1
+        base          = i*i/math.pow(bandwidth, 2)
+        kernel        = kernel(base, 1, kernel_type)
+        sumWeightedY += kernel * src[i]
+        sumKernels   += kernel
+    (src - sumWeightedY/sumKernels)/src
+
+// Define the calculation
+waveCalculation(source, bandwidth, width) =>
+    sum  = 0.0
+    sumw = 0.0
+    for i = 0 to bandwidth
+        val    = (i * i) / (bandwidth * bandwidth) / width
+        weight = if val <= 0.5
+            (1 - val) * math.cos(math.pi * val)
+        else
+            0.0
+        sum  := sum  + source[i] * weight
+        sumw := sumw + weight
+    kernel_regression = sum / sumw
+    kernel_regression
+
+Wave = waveCalculation(source, bandwidth, width)
+
+// Triple Confirmations
+Ep = kernelRegression(source, bandwidth, 'Epanechnikov' )
+Lo = kernelRegression(source, bandwidth, 'Logistic'     )
+Wa = kernelRegression(source, bandwidth, 'Wave'         )
+
+// Average
+AV    = math.avg(Ep, Lo, Wa) + close
+Mid   = ta.sma  (AV, sdLook)
+arrUp = Wave > Wave[1] and not (Wave[1] > Wave[2])
+arrDn = Wave < Wave[1] and not (Wave[1] < Wave[2])
+
+
+  //             //
+ //    Plots    //
+//             //
+
+// Base Plots
+mid = plot(Mid, "Mid", color.gray, 2)
+
+// Calculate Dynamic OB/OS Zones
+stdv_bands(_src, _length, _mult) =>
+    float basis = ta.sma  (_src, _length)
+    float dev   = ta.stdev(_src, _length) * _mult
+    [basis, basis + dev, basis - dev]
+
+[_, u1, l1] = stdv_bands(AV, sdLook, sdMult/2)
+[_, u2, l2] = stdv_bands(AV, sdLook, sdMult)
+
+
+// Final Plots + Fill
+pu1  = plot(u1, "1.𝓢𝓓 +", color.new(DnCol, 70))
+pl1  = plot(l1, "1.𝓢𝓓 -", color.new(UpCol, 70))
+pu2  = plot(u2, "2.𝓢𝓓 +", color.new(DnCol, 70))
+pl2  = plot(l2, "2.𝓢𝓓 -", color.new(UpCol, 70))
+fill(pu1, pu2, u2, u1, devS ? color.new(DnCol, 60) : na, color.new(chart.bg_color, 55))
+fill(pl1, pl2, l2, l1, devS ? color.new(UpCol, 60) : na, color.new(chart.bg_color, 55))
+
+HL2  = plot(hl2, color = color(na))
+wave = plot(Wave, "𝓢𝓲𝓰𝓷𝓪𝓵 𝓦𝓪𝓿𝓮", BCol ? color(na) : Wave > Wave[1] ? UpCol : DnCol, 3)
+fill(wave, HL2, Wave, hl2, BCol ? color.new(Wave > Wave[1] ? UpCol : DnCol, 50) : na, color.new(chart.bg_color, 75)) 
+
+plotshape(arrUp, "Trend", shape.arrowup,   location.belowbar, UpCol, 0, "Up",   UpCol, size = size.auto, display = sig? display.all : display.none)
+plotshape(arrDn, "Trend", shape.arrowdown, location.abovebar, DnCol, 0, "Down", DnCol, size = size.auto, display = sig? display.all : display.none)
+
+bgcolor (OBOS ? (AV > u2 ? color.new(DnCol, TR) : AV < l2 ? color.new(UpCol, TR) : na) : na)
+barcolor(BCol ? Wave > Wave[1]? UpCol : DnCol: na)
+
+// Alerts
+symbol = "ᏦᏒᎧ ᏫᏉᏋᏒႱᎯᎽ [QuantraAI] >>> {{exchange}}:{{ticker}}"
+
+// Trend Following Alerts
+alertcondition(arrUp,   "Trend Up",           symbol + " Trend Following - Long Entry!"  )
+alertcondition(arrDn,   "Trend Down",         symbol + " Trend Following - Short Entry!" )
+// Extremity Alerts
+alertcondition(AV < l2, "Extremes - OS Zone", symbol + " Extreme - OS Zone!"             )
+alertcondition(AV > u2, "Extremes - OB Zone", symbol + " Extreme - OB Zone!"             )
